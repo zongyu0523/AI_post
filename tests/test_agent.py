@@ -58,18 +58,64 @@ def test_publish_words_catch_the_usual_labels():
         assert not agent.PUBLISH_WORDS.search(label), label
 
 
-# ── stale outlines are actively removed ──────────────────────────────────────────────────────
-def test_old_outlines_are_expired_so_stale_refs_cannot_be_shopped_for():
+# ── stale outlines lose their refs, then go ──────────────────────────────────────────────────
+def _conversation(n: int) -> list[dict]:
     messages = [{"role": "system", "content": "s"}]
-    for i in range(5):
+    for i in range(n):
         messages.append({"role": "assistant", "content": None})
-        messages.append({"role": "tool", "tool_call_id": str(i), "content": f"outline {i}"})
-    agent._expire_old_outlines(messages, keep=2)
+        messages.append({"role": "tool", "tool_call_id": str(i),
+                         "content": f'- button "取消 {i}" [ref=e{i}]\n- text: screen {i}'})
+    return messages
+
+
+def test_the_two_newest_outlines_are_untouched():
+    messages = _conversation(5)
+    agent._expire_old_outlines(messages, keep=2, remember=8)
 
     tools = [m for m in messages if m["role"] == "tool"]
-    assert tools[-1]["content"] == "outline 4"
-    assert tools[-2]["content"] == "outline 3"
-    assert all(m["content"].startswith("(expired") for m in tools[:-2])
+    assert "[ref=e4]" in tools[-1]["content"] and "[ref=e3]" in tools[-2]["content"]
+
+
+def test_an_older_outline_keeps_its_words_but_loses_its_refs():
+    """Both halves matter. The refs must go - every snapshot re-stamps them, so an old `[ref=e1]`
+    now points at something else, and shopping for one in there is the bug this design exists
+    around. The words must stay - with no memory of the screens it had been on, a real run walked
+    back into the same photo-editing view three times."""
+    messages = _conversation(5)
+    agent._expire_old_outlines(messages, keep=2, remember=8)
+
+    old = [m for m in messages if m["role"] == "tool"][0]["content"]
+    assert "[ref=" not in old, old
+    assert "取消 0" in old and "screen 0" in old, old
+    assert old.startswith("(earlier screen")
+
+
+def test_the_oldest_outlines_go_entirely():
+    """Memory is not free; past `remember` the words go too."""
+    messages = _conversation(12)
+    agent._expire_old_outlines(messages, keep=2, remember=8)
+
+    tools = [m for m in messages if m["role"] == "tool"]
+    assert all(m["content"].startswith("(expired") for m in tools[:-8]), tools[0]["content"]
+    assert all(m["content"].startswith("(earlier screen") for m in tools[-8:-2])
+
+
+def test_expiring_twice_does_not_re_wrap_a_message():
+    """`_expire_old_outlines` runs every turn, so it sees its own output over and over."""
+    messages = _conversation(5)
+    agent._expire_old_outlines(messages, keep=2, remember=8)
+    agent._expire_old_outlines(messages, keep=2, remember=8)
+
+    old = [m for m in messages if m["role"] == "tool"][0]["content"]
+    assert old.count("(earlier screen") == 1, old
+
+
+def test_the_budget_allows_a_run_that_has_to_recover():
+    """A run that hit a failed image upload spent most of 26 steps clearing the attachments and
+    re-adding four photos, and ran out one step before it would have published."""
+    import inspect
+
+    assert inspect.signature(agent.BrowserAgent.run).parameters["max_steps"].default >= 50
 
 
 # ── destination ──────────────────────────────────────────────────────────────────────────────
