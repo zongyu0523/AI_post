@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="darkreader-lock">
+<link rel="icon" href="data:,">
+<title>AI Post</title>
+<style>
+/* Design tokens (冷石 stone), card and button styles,
+   ui/status-badge.tsx, ui/console-kit.tsx (FCard / PageHead / MonoStatus / FLabel / TypedChip).
+   Measurements are the real ones: card 16px / control 10px radius, FCard px-[15px] pt-[14px],
+   eyebrow 9.5px uppercase tracking .14em, tile 40px rounded-[11px] with an inset hairline,
+   hover lift -2px + shadow 0 10px 28px -16px. */
+:root{
+  --background:30 10% 96%; --foreground:28 6% 22%; --card:0 0% 100%;
+  --secondary:30 9% 93%; --muted:30 9% 93%; --muted-foreground:28 5% 48%;
+  --accent:30 9% 93%; --primary:28 6% 40%; --primary-foreground:0 0% 99%;
+  --success:158 56% 33%; --warning:33 86% 40%; --destructive:0 70% 47%;
+  --border:30 8% 88%; --input:30 8% 88%; --ring:28 6% 46%; --brand:28 6% 40%;
+  --radius-card:1rem; --radius-control:.625rem; --radius-pill:9999px;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --lift:0 10px 28px -16px hsl(28 6% 22%/.35);
+  --hair:0 1px 2px hsl(28 6% 22%/.04);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:hsl(var(--background));color:hsl(var(--foreground));
+  font:15px/1.65 "Noto Sans TC",-apple-system,"Segoe UI",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow:hidden}
+::selection{background:hsl(var(--ring)/.22)}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:hsl(28 6% 22%/.16);border-radius:99px;
+  border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:hsl(28 6% 22%/.3);background-clip:content-box}
+:focus-visible{outline:2px solid hsl(var(--ring));outline-offset:2px}
+
+/* ── shell ─────────────────────────────────────────────────────────────── */
+.app{display:flex;height:100dvh;overflow:hidden}
+aside{width:272px;flex:none;border-right:1px solid hsl(var(--border));
+  background:hsl(var(--card));display:flex;flex-direction:column}
+aside .brand{height:60px;display:flex;align-items:center;gap:11px;padding:0 18px;
+  font-weight:700;letter-spacing:-.01em;font-size:17px}
+aside .brand .mk{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;
+  background:hsl(var(--primary));color:hsl(var(--primary-foreground))}
+aside .brand .mk svg{width:17px;height:17px}
+aside nav{padding:10px 12px;display:flex;flex-direction:column;gap:1px}
+aside nav button{position:relative;display:flex;align-items:center;gap:10px;width:100%;
+  text-align:left;padding:11px 12px;border:0;border-radius:var(--radius-control);
+  background:transparent;font:inherit;font-size:15px;font-weight:500;
+  color:hsl(var(--muted-foreground));cursor:pointer;transition:background .13s,color .13s}
+aside nav button:hover{background:hsl(var(--accent));color:hsl(var(--foreground))}
+aside nav button[aria-current=true]{background:hsl(var(--secondary));
+  color:hsl(var(--foreground));font-weight:600}
+aside nav button[aria-current=true]::before{content:"";position:absolute;left:0;top:9px;
+  bottom:9px;width:3px;border-radius:99px;background:hsl(var(--primary))}
+aside nav button[aria-current=true]{padding-left:17px}
+aside nav svg{width:19px;height:19px;flex:none;opacity:.85}
+aside .foot{margin-top:auto;padding:16px 18px;border-top:1px solid hsl(var(--border));
+  display:flex;flex-direction:column;gap:7px}
+
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+header.bar{height:60px;flex:none;display:flex;align-items:center;gap:11px;padding:0 26px;
+  border-bottom:1px solid hsl(var(--border));background:hsl(var(--background)/.78);
+  backdrop-filter:blur(10px);z-index:10}
+.scroll{flex:1;overflow:auto;padding:30px 34px 56px}
+.wrap{max-width:1400px;margin:0 auto}
+.spacer{flex:1}
+
+/* ── PageHead ──────────────────────────────────────────────────────────── */
+.pagehead{margin-bottom:22px}
+.pagehead h2{display:flex;align-items:center;gap:11px;font-size:25px;font-weight:700;
+  letter-spacing:-.02em;margin:0}
+.pagehead h2 svg{width:25px;height:25px;color:hsl(var(--muted-foreground))}
+.pagehead p{margin:9px 0 0;font-size:14px;line-height:1.65;color:hsl(var(--muted-foreground));
+  max-width:72ch}
+
+/* ── primitives ────────────────────────────────────────────────────────── */
+.card{position:relative;overflow:hidden;border:1px solid hsl(var(--border));
+  background:hsl(var(--card));border-radius:var(--radius-card);box-shadow:var(--hair)}
+.card.pad{padding:26px}
+.card.lift{transition:transform .15s ease,box-shadow .15s ease}
+.card.lift:hover{transform:translateY(-2px);box-shadow:var(--lift)}
+.flabel{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+  color:hsl(var(--muted-foreground))}
+.flabel.lat{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em}
+.mono{font-family:var(--mono)}
+.hair{height:1px;background:hsl(var(--border))}
+.monostat{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+  font-size:11.5px;font-weight:600;letter-spacing:.04em;white-space:nowrap}
+.monostat i{width:6px;height:6px;border-radius:99px;background:currentColor;
+  display:inline-block;font-style:normal;flex:none}
+.monostat.live i{animation:pulse 1.15s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(.7)}}
+.t-success{color:hsl(var(--success))} .t-warning{color:hsl(var(--warning))}
+.t-destructive{color:hsl(var(--destructive))} .t-primary{color:hsl(var(--primary))}
+.t-muted{color:hsl(var(--muted-foreground))} .t-brand{color:hsl(var(--brand))}
+
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:var(--radius-pill);
+  border:1px solid;padding:3px 12px;font-size:12.5px;font-weight:500;white-space:nowrap}
+.bg-success{border-color:hsl(var(--success)/.2);background:hsl(var(--success)/.1);color:hsl(var(--success))}
+.bg-warning{border-color:hsl(var(--warning)/.2);background:hsl(var(--warning)/.1);color:hsl(var(--warning))}
+.bg-destructive{border-color:hsl(var(--destructive)/.2);background:hsl(var(--destructive)/.1);color:hsl(var(--destructive))}
+.bg-brand{border-color:hsl(var(--primary)/.2);background:hsl(var(--primary)/.1);color:hsl(var(--primary))}
+.bg-neutral{border-color:hsl(var(--border));background:hsl(var(--muted));color:hsl(var(--muted-foreground))}
+
+button.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;
+  padding:0 18px;border-radius:var(--radius-control);font:inherit;font-size:15px;font-weight:500;
+  cursor:pointer;white-space:nowrap;border:1px solid hsl(var(--input));
+  background:hsl(var(--background));color:hsl(var(--foreground));
+  transition:background .12s,border-color .12s,transform .08s}
+button.btn:hover:not(:disabled){background:hsl(var(--accent))}
+button.btn:active:not(:disabled){transform:translateY(1px)}
+button.btn.primary{background:hsl(var(--primary));border-color:hsl(var(--primary));
+  color:hsl(var(--primary-foreground))}
+button.btn.primary:hover:not(:disabled){background:hsl(var(--primary)/.9)}
+button.btn.destructive{background:hsl(var(--destructive));border-color:hsl(var(--destructive));color:#fff}
+button.btn.destructive:hover:not(:disabled){background:hsl(var(--destructive)/.9)}
+button.btn.ghost{border-color:transparent;background:transparent}
+button.btn.ghost:hover:not(:disabled){background:hsl(var(--accent))}
+button.btn.sm{height:36px;padding:0 13px;font-size:13.5px;gap:6px}
+button.btn.sm svg{width:15px;height:15px}
+button.btn:disabled{opacity:.5;cursor:not-allowed}
+button.btn svg{width:17px;height:17px}
+
+label.fld{display:block;font-size:13.5px;font-weight:550;color:hsl(var(--muted-foreground));
+  margin:16px 0 6px}
+label.fld:first-child{margin-top:0}
+input,textarea,select{width:100%;height:44px;padding:0 14px;border:1px solid hsl(var(--input));
+  border-radius:var(--radius-control);font:inherit;background:hsl(var(--card));
+  color:hsl(var(--foreground));outline:none;transition:border-color .12s,box-shadow .12s}
+textarea{height:auto;padding:13px 15px;resize:vertical;min-height:150px;line-height:1.75}
+input:focus,textarea:focus,select:focus{border-color:hsl(var(--ring));
+  box-shadow:0 0 0 3px hsl(var(--ring)/.13);outline:none}
+input::placeholder,textarea::placeholder{color:hsl(var(--muted-foreground)/.75)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:13.5px;line-height:1.6;color:hsl(var(--muted-foreground))}
+
+/* choice chips */
+.choices{display:flex;gap:9px;flex-wrap:wrap}
+.choice{display:flex;align-items:center;gap:12px;padding:15px 17px;cursor:pointer;flex:1;
+  min-width:240px;border:1px solid hsl(var(--input));border-radius:var(--radius-control);
+  background:hsl(var(--card));font-weight:550;user-select:none;
+  transition:border-color .13s,background .13s,box-shadow .13s}
+.choice:hover{background:hsl(var(--accent))}
+.choice[aria-pressed=true]{border-color:hsl(var(--ring));background:hsl(var(--ring)/.06);
+  box-shadow:0 0 0 2px hsl(var(--ring)/.13)}
+.choice .ic{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:10px;
+  background:hsl(var(--secondary));box-shadow:inset 0 0 0 1px hsl(var(--border))}
+.choice .ic svg{width:19px;height:19px}
+.choice .s{font-size:12.5px;color:hsl(var(--muted-foreground));font-weight:400;margin-top:1px}
+
+/* ── FCard (task) ──────────────────────────────────────────────────────── */
+.tasks{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(400px,1fr))}
+.fc{display:flex;flex-direction:column}
+.fc .head{position:relative;display:flex;align-items:center;gap:14px;
+  padding:17px 18px 15px}
+.fc .tile{display:grid;place-items:center;width:46px;height:46px;flex:none;border-radius:13px;
+  background:hsl(var(--secondary));box-shadow:inset 0 0 0 1px hsl(var(--border))}
+.fc .tile svg{width:23px;height:23px}
+.fc .when{margin-top:4px}
+.fc .title{font-size:15.5px;font-weight:650;line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fc .content{font-size:14.5px;line-height:1.75;color:hsl(var(--foreground));white-space:pre-wrap;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.fc .bd{position:relative;padding:15px 18px 0}
+.fc .ft{position:relative;margin-top:auto;display:flex;align-items:center;gap:9px;
+  padding:15px 18px 16px}
+.fc .body{font-size:13px;line-height:1.65;color:hsl(var(--muted-foreground));
+  white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  overflow:hidden}
+.thumbs{display:flex;gap:6px;margin-top:10px}
+.thumbs img{width:54px;height:42px;object-fit:cover;border-radius:7px;
+  box-shadow:inset 0 0 0 1px hsl(var(--border))}
+.thumbs .more{display:grid;place-items:center;width:54px;height:42px;border-radius:7px;
+  background:hsl(var(--secondary));font-size:11px;color:hsl(var(--muted-foreground));
+  box-shadow:inset 0 0 0 1px hsl(var(--border))}
+
+/* status groups */
+.gsec{margin-bottom:32px}
+.gsec:last-child{margin-bottom:0}
+.ghead{display:flex;align-items:center;gap:10px;margin:0 2px 13px;flex-wrap:wrap}
+.ghead h3{display:flex;align-items:center;gap:9px;margin:0;font-size:15.5px;font-weight:680}
+.ghead h3 i{flex:none;width:8px;height:8px;border-radius:99px;background:currentColor}
+.ghead h3 span{color:hsl(var(--foreground))}
+.ghead .n{font-family:var(--mono);font-size:11px;padding:2px 9px;
+  border-radius:var(--radius-pill);background:hsl(var(--secondary));
+  box-shadow:inset 0 0 0 1px hsl(var(--border));color:hsl(var(--muted-foreground))}
+.ghead p{margin:0;font-size:12.5px;color:hsl(var(--muted-foreground))}
+
+/* empty state */
+.empty{position:relative;grid-column:1/-1;text-align:center;padding:56px 24px;overflow:hidden}
+.empty .big{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+  opacity:.045;pointer-events:none}
+.empty .big svg{width:190px;height:190px}
+.empty h3{position:relative;margin:0 0 6px;font-size:16px;font-weight:650}
+.empty p{position:relative;margin:0 0 18px}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:hsl(28 6% 12%/.45);display:grid;place-items:center;
+  z-index:60;padding:22px;animation:fade .15s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{width:min(780px,100%);max-height:88dvh;overflow:auto;background:hsl(var(--card));
+  border:1px solid hsl(var(--border));border-radius:var(--radius-card);
+  box-shadow:0 28px 70px -22px hsl(28 6% 12%/.45);animation:pop .18s cubic-bezier(.2,.9,.3,1)}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.modal .mhead{position:sticky;top:0;z-index:2;background:hsl(var(--card));padding:20px 26px 16px;
+  border-bottom:1px solid hsl(var(--border));display:flex;align-items:center;gap:10px}
+.modal .mhead h3{margin:0;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.modal .mbody{padding:24px 26px 26px}
+.modal .mfoot{position:sticky;bottom:0;background:hsl(var(--card));padding:16px 26px;
+  border-top:1px solid hsl(var(--border));display:flex;gap:10px;align-items:center}
+.section{margin-top:20px}
+.section:first-child{margin-top:0}
+.section > .flabel{margin-bottom:8px}
+
+/* composer toolbar */
+.tools{display:flex;gap:6px;align-items:center;padding:7px 9px;border:1px solid hsl(var(--input));
+  border-bottom:0;border-radius:var(--radius-control) var(--radius-control) 0 0;
+  background:hsl(var(--muted)/.5)}
+.tools + textarea{border-radius:0 0 var(--radius-control) var(--radius-control)}
+.tbtn{display:grid;place-items:center;min-width:32px;height:32px;padding:0 8px;border:0;
+  border-radius:8px;background:transparent;font:inherit;font-size:15px;cursor:pointer;
+  color:hsl(var(--foreground));white-space:nowrap;gap:5px;grid-auto-flow:column}
+.tbtn:hover{background:hsl(var(--card))}
+.tbtn b{font-weight:800}
+.tools .sep{width:1px;height:20px;background:hsl(var(--border));margin:0 3px}
+.tools .note{margin-left:auto;font-size:11.5px;color:hsl(var(--muted-foreground))}
+#emojipop{position:fixed;z-index:70;width:360px;max-height:330px;overflow:auto;padding:10px;
+  background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:var(--radius-card);
+  box-shadow:0 14px 36px -14px hsl(28 6% 12%/.4);display:grid;
+  grid-template-columns:repeat(9,1fr);gap:3px}
+#emojipop button{border:0;background:transparent;font-size:19px;line-height:1;padding:5px;
+  border-radius:7px;cursor:pointer}
+#emojipop button:hover{background:hsl(var(--accent))}
+#emojipop .egroup{grid-column:1/-1;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.04em;color:hsl(var(--muted-foreground));padding:8px 2px 3px}
+#emojipop .egroup:first-child{padding-top:0}
+#emojipop .ehint{grid-column:1/-1;font-size:11px;color:hsl(var(--muted-foreground));
+  padding:0 2px 8px;margin-bottom:6px;border-bottom:1px solid hsl(var(--border))}
+#emojipop .ehint + .egroup{padding-top:0}
+
+/* picked images */
+.drop{display:flex;align-items:center;justify-content:center;gap:9px;padding:20px;cursor:pointer;
+  border:1.5px dashed hsl(var(--input));border-radius:var(--radius-control);
+  background:hsl(var(--muted)/.4);color:hsl(var(--muted-foreground));font-weight:500}
+.drop:hover{border-color:hsl(var(--ring));background:hsl(var(--ring)/.05);
+  color:hsl(var(--foreground))}
+.drop.on{border-color:hsl(var(--ring));background:hsl(var(--ring)/.09)}
+.picked{display:flex;gap:10px;flex-wrap:wrap;margin-top:11px}
+.picked figure{position:relative;margin:0;width:96px}
+.picked img{width:96px;height:72px;object-fit:cover;border-radius:9px;display:block;
+  box-shadow:inset 0 0 0 1px hsl(var(--border))}
+.picked .x{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:99px;
+  border:1px solid hsl(var(--border));background:hsl(var(--card));cursor:pointer;
+  font-size:13px;line-height:1;color:hsl(var(--destructive))}
+.picked figcaption{font-size:10px;color:hsl(var(--muted-foreground));margin-top:4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* media picker */
+.media{display:flex;gap:11px;flex-wrap:wrap;max-height:210px;overflow:auto;
+  border:1px solid hsl(var(--input));border-radius:var(--radius-control);padding:10px;
+  background:hsl(var(--muted)/.5)}
+.media figure{margin:0;width:100px;cursor:pointer;text-align:center}
+.media img{width:100px;height:74px;object-fit:cover;border-radius:8px;display:block;
+  background:hsl(var(--card));box-shadow:inset 0 0 0 1px hsl(var(--border));
+  transition:box-shadow .13s,transform .13s}
+.media figure:hover img{transform:translateY(-1px)}
+.media figure[aria-pressed=true] img{box-shadow:0 0 0 2px hsl(var(--ring)),
+  0 0 0 5px hsl(var(--ring)/.16)}
+.media figcaption{font-size:10px;color:hsl(var(--muted-foreground));margin-top:4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* one task, opened: what it is going to post, then how it went */
+.about{padding:19px 22px;display:grid;gap:15px}
+.about .meta{display:flex;flex-wrap:wrap;align-items:center;gap:9px 20px}
+.about .kv{display:flex;align-items:baseline;gap:8px;font-size:13.5px;min-width:0}
+.about .kv b{flex:none;font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.04em;color:hsl(var(--muted-foreground))}
+.about .text{font-size:14.5px;line-height:1.8;white-space:pre-wrap;word-break:break-word;
+  padding:14px 16px;border-radius:var(--radius-control);background:hsl(var(--muted)/.55);
+  box-shadow:inset 0 0 0 1px hsl(var(--border));max-height:26dvh;overflow:auto}
+.about .text.none{color:hsl(var(--muted-foreground));font-size:13px}
+.about .pics{display:flex;gap:9px;flex-wrap:wrap}
+.about .pics img{width:112px;height:84px;object-fit:cover;border-radius:9px;display:block;
+  box-shadow:inset 0 0 0 1px hsl(var(--border))}
+.steplab{display:flex;align-items:center;gap:9px;padding:11px 22px;
+  border-top:1px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));
+  background:hsl(var(--muted)/.45);font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.04em;color:hsl(var(--muted-foreground))}
+.cbody{overflow:auto;padding:8px 0;background:hsl(var(--card))}
+.step{display:flex;gap:10px;padding:4px 16px;font-size:13px;line-height:1.65;
+  align-items:flex-start}
+.step .mk{flex:none;width:15px;text-align:center;opacity:.8;font-size:11px;line-height:1.75}
+.step .tx{min-width:0;word-break:break-word;white-space:pre-wrap}
+.step .xn{flex:none;font-family:var(--mono);font-size:10.5px;color:hsl(var(--muted-foreground));
+  background:hsl(var(--secondary));border-radius:99px;padding:0 6px;align-self:center}
+.step.tool{background:hsl(var(--muted)/.6)}
+.step.tool .tx{font-family:var(--mono);font-size:12px}
+.step.fire{background:hsl(var(--destructive)/.07)}
+.step.fire .tx{color:hsl(var(--destructive));font-weight:600}
+.step.err .tx{color:hsl(var(--destructive))}
+.step.ok .tx{color:hsl(var(--success))}
+.step.sub .tx{color:hsl(var(--muted-foreground))}
+
+/* run history */
+details.run{border-bottom:1px solid hsl(var(--border));padding:13px 0}
+details.run:last-child{border-bottom:0}
+details.run summary{cursor:pointer;list-style:none}
+details.run summary::-webkit-details-marker{display:none}
+details.run summary:hover b{text-decoration:underline;text-underline-offset:3px}
+
+/* channel rows */
+.chrow{display:flex;gap:13px;padding:14px 0;border-bottom:1px solid hsl(var(--border))}
+.chrow:first-child{padding-top:0}
+.chrow:last-child{border-bottom:0;padding-bottom:0}
+
+.tplchips{display:flex;gap:8px;flex-wrap:wrap}
+.tplchip{display:flex;align-items:center;gap:7px;border:1px solid hsl(var(--border));
+  border-radius:var(--radius-control);padding:5px 7px 5px 5px;font-size:12px;
+  background:hsl(var(--card))}
+.tplchip img{height:26px;border-radius:5px;box-shadow:inset 0 0 0 1px hsl(var(--border))}
+#shotbox{position:relative;display:inline-block;max-width:100%;
+  border-radius:var(--radius-control);overflow:hidden;box-shadow:inset 0 0 0 1px hsl(var(--border))}
+#shot{max-width:100%;display:block;cursor:crosshair;user-select:none}
+#sel{position:absolute;border:2px solid hsl(var(--ring));background:hsl(var(--ring)/.16);
+  display:none;pointer-events:none}
+code{font-family:var(--mono);font-size:12px;background:hsl(var(--secondary));
+  padding:1px 5px;border-radius:5px}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  background:hsl(var(--foreground));color:hsl(var(--primary-foreground));padding:11px 18px;
+  border-radius:var(--radius-control);font-size:13px;display:none;z-index:80;max-width:84vw;
+  box-shadow:0 12px 34px hsl(28 6% 12%/.3);animation:up .18s ease}
+@keyframes up{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+[hidden]{display:none !important}
+@media (max-width:980px){
+  aside{width:68px}
+  aside .brand span.t,aside nav button span.t,aside .foot{display:none}
+  aside nav button{justify-content:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12l16-8-5 16-3-6z"/></svg></span>
+      <span class="t">AI Post</span>
+    </div>
+    <nav id="nav"></nav>
+    <div class="foot">
+      <span id="chip_llm"></span>
+      <span id="chip_line"></span>
+    </div>
+  </aside>
+
+  <main>
+    <header class="bar">
+      <span class="monostat t-muted" id="bar_where">任務</span>
+      <span class="spacer"></span>
+      <button class="btn sm ghost" onclick="refresh()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/>
+          <path d="M21 4v5h-5"/></svg>重新整理</button>
+      <button class="btn primary sm" onclick="openTask()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增任務</button>
+    </header>
+
+    <div class="scroll"><div class="wrap">
+
+      <section data-panel="tasks">
+        <div class="pagehead">
+          <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-5 16-3-6z"/></svg>任務</h2>
+          <p>一則內容，選好要發去哪，時間到就自己發。</p>
+        </div>
+        <div id="tasks"></div>
+      </section>
+
+      <section data-panel="settings" hidden>
+        <div class="pagehead">
+          <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/>
+            <circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>設定</h2>
+          <p>各個管道現在能不能用，以及要發到哪裡。</p>
+        </div>
+        <div class="card pad" style="margin-bottom:16px"><div id="channels"></div></div>
+        <div class="card pad" style="margin-bottom:16px">
+          <div class="flabel" style="margin-bottom:14px">Facebook</div>
+          <label class="fld">發到哪裡</label>
+          <input id="fb_page_url" placeholder="留空 = 你的個人動態；要發粉專就填粉專網址或名稱">
+          <p class="hint" style="margin:9px 0 0">
+            留空就是發到你自己的動態；想發粉專就把粉專網址貼進來。</p>
+          <label class="fld">誰看得到</label>
+          <select id="fb_audience">
+            <option value="只限本人">只限本人（只有你看得到，適合先試）</option>
+            <option value="好友">好友</option>
+            <option value="公開">公開</option>
+          </select>
+          <p class="hint" style="margin:9px 0 0">
+            Facebook 常常沿用你上次的設定，所以每次發文前它都會自己讀這一項，不對就改回來；
+            真的改不動就不發，不會賭。</p>
+          <p class="hint" style="margin:7px 0 0">
+            「開啟專用瀏覽器」會開那顆它專用的 Chrome，而且一直開著到你自己關掉 ——
+            要登入、要看它發的貼文、要自己調設定都用這個。</p>
+          <div class="row" style="margin-top:15px">
+            <button class="btn" onclick="saveFb()">儲存</button>
+            <button class="btn" id="fblogin" onclick="fbBrowser()">開啟專用瀏覽器</button>
+          </div>
+        </div>
+        <div class="card pad" style="margin-bottom:16px">
+          <div class="flabel" style="margin-bottom:14px">LINE</div>
+          <label class="fld">要發到哪個群組</label>
+          <input id="line_group_name" placeholder="群組的名字，跟 LINE 裡顯示的一樣">
+          <p class="hint" style="margin:10px 0 0">
+            它會自己在 LINE 裡搜尋這個群組、打開記事本、把內容貼上去。
+            第一次請先用「預演」跑一遍 —— 它會把每顆按鈕長什麼樣記起來，之後就快了。
+            過程中 LINE 視窗要開著（被蓋住沒關係，縮到工作列就不行）。</p>
+          <div class="row" style="margin-top:16px">
+            <button class="btn" onclick="saveLine()">儲存</button>
+          </div>
+        </div>
+        <div class="card pad">
+          <div class="flabel" style="margin-bottom:14px">AI 模型</div>
+          <label class="fld">API Key</label>
+          <input id="llm_api_key" type="password" placeholder="貼上就好，其他都不用設">
+          <p class="hint" style="margin:10px 0 0">
+            只要貼上金鑰就好，其他都設定好了。金鑰只存在你自己這台電腦。</p>
+          <div class="row" style="margin-top:16px">
+            <button class="btn primary" onclick="saveLlm()">儲存</button>
+            <button class="btn" onclick="testLlm()">測試連線</button>
+            <span id="llm_status"></span>
+          </div>
+        </div>
+      </section>
+
+    </div></div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal">
+    <div class="mhead">
+      <h3>新增任務</h3><span class="spacer"></span>
+      <button class="btn ghost sm" onclick="closeTask()">關閉</button>
+    </div>
+    <div class="mbody">
+      <div class="section"><div class="flabel">發到哪裡</div>
+        <div class="choices" id="t_channels"></div></div>
+
+      <div class="section"><div class="flabel">內文</div>
+        <div class="tools">
+          <button type="button" class="tbtn" onclick="openEmoji(event)" title="插入表情符號">🙂</button>
+          <span class="sep"></span>
+          <button type="button" class="tbtn" onclick="makeBold()"
+                  title="把選取的英文數字換成粗體字符">加粗 <b>B</b></button>
+          <span class="note" id="t_boldnote">FB 跟 LINE 的貼文沒有格式，粗體只對英數有效</span>
+        </div>
+        <textarea id="t_body" placeholder="要發出去的文字。emoji、大小寫、換行都會原樣送出 🎉"></textarea></div>
+
+      <div class="section"><div class="flabel">圖片</div>
+        <input type="file" id="t_files" accept="image/*" multiple hidden onchange="takeFiles(this.files)">
+        <div class="drop" id="t_drop" onclick="$('t_files').click()">
+          <span style="font-size:19px">＋</span> 選擇圖片（可多選，或直接拖進來）
+        </div>
+        <div class="picked" id="t_picked"></div></div>
+
+      <div class="section"><div class="flabel">什麼時候</div>
+        <div class="choices">
+          <div class="choice" id="t_now" aria-pressed="true" onclick="setWhen(true)">
+            <span class="ic t-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2L4.5 13H11l-1 9 8.5-11H12z"/></svg></span>
+            <div><div>立刻執行</div><div class="s">按下去就開始跑</div></div></div>
+          <div class="choice" id="t_later" aria-pressed="false" onclick="setWhen(false)">
+            <span class="ic t-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <div><div>排程</div><div class="s">時間到自己發</div></div></div>
+        </div>
+        <input type="datetime-local" id="t_at" hidden style="margin-top:10px"></div>
+
+      <div class="section"><div class="flabel">方式</div>
+        <div class="choices">
+          <div class="choice" id="t_dry" aria-pressed="true" onclick="setMode(true)">
+            <span class="ic t-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/>
+              </svg></span>
+            <div><div>預演</div><div class="s">整套跑一遍，但停在按下發布之前</div></div></div>
+          <div class="choice" id="t_real" aria-pressed="false" onclick="setMode(false)">
+            <span class="ic t-destructive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12l16-8-5 16-3-6z"/></svg></span>
+            <div><div>真的發出去</div><div class="s">不可逆</div></div></div>
+        </div></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn primary" id="t_submit" onclick="submitTask()">建立任務</button>
+      <button class="btn ghost" onclick="closeTask()">取消</button>
+      <span class="spacer"></span><span class="hint" id="t_hint"></span>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="runscrim" hidden>
+  <div class="modal" style="width:min(720px,100%)">
+    <div class="mhead">
+      <span class="monostat" id="run_state"><i></i>—</span>
+      <h3 id="run_title">—</h3>
+      <span class="spacer"></span>
+      <span class="monostat t-muted" id="run_elapsed"></span>
+      <button class="btn ghost sm" onclick="closeRun()">關閉</button>
+    </div>
+    <div class="mbody" style="padding:0">
+      <div id="run_about"></div>
+      <div id="run_evidence"></div>
+      <div class="steplab">執行過程<span class="spacer"></span><span id="run_nsteps"></span></div>
+      <div class="cbody" id="run_steps" style="max-height:34dvh"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn destructive" id="run_stop" hidden onclick="stopRun()">終止</button>
+      <span class="hint" id="run_detail"></span>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const trim = s => (s ?? '').trim();
+let state=null, es=null, runStart=0, timer=null;
+let draft={channels:new Set(), images:[], now:true, dry:true};
+
+function toast(m, ms=4500){ const t=$('toast'); t.textContent=m; t.style.display='block';
+  clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none', ms); }
+async function api(path, method='GET', body){
+  const r=await fetch(path,{method, headers:body?{'Content-Type':'application/json'}:{},
+    body:body?JSON.stringify(body):undefined});
+  const txt=await r.text(); const d=txt?JSON.parse(txt):{};
+  if(!r.ok) throw new Error(d.detail||`HTTP ${r.status}`);
+  return d;
+}
+const svg = (p, sw=1.8) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+/* Hand-drawn on a 24 viewBox, stroke 1.8 — the same construction as console-kit's glyphs,
+   deliberately not brand marks. */
+const GLYPH = {
+  facebook_page:'<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M14.5 8H13a2 2 0 0 0-2 2v2H9.5"/><path d="M9.5 12H15"/><path d="M11 12v5"/>',
+  line_group_note:'<path d="M4 5.5h16v9H13l-4.5 4v-4H4z"/><path d="M8 9.5h8M8 12h5"/>',
+};
+const TONE_OF = {facebook_page:'t-brand', line_group_note:'t-success'};
+const chanLabel = k => (state?.channels.find(c=>c.key===k)?.label) || k;
+
+/* ── nav ─────────────────────────────────────────── */
+const NAV=[
+  ['tasks','任務','<path d="M4 12l16-8-5 16-3-6z"/>'],
+  ['settings','設定','<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/>'],
+];
+let tab='tasks';
+function renderNav(){
+  $('nav').innerHTML = NAV.map(([k,t,p])=>
+    `<button aria-current="${tab===k}" onclick="go('${k}')">${svg(p)}<span class="t">${t}</span></button>`).join('');
+  $('bar_where').textContent = NAV.find(n=>n[0]===tab)[1];
+}
+function go(k){
+  tab=k; renderNav();
+  document.querySelectorAll('[data-panel]').forEach(p=>p.hidden = p.dataset.panel!==k);
+}
+
+/* ── steps, with ×N coalescing (ToolRunCard behaviour) ──────────────── */
+const MARKS=[[/^🔧/,'tool','🔧'],[/^🚀/,'fire','🚀'],[/^FIRING:/,'fire','🚀'],[/^✅/,'ok','✅'],
+  [/^■/,'ok','■'],[/^▶/,'','▶'],[/^✖/,'err','✖'],[/^🛑/,'err','🛑'],[/^⏳/,'sub','⏳'],
+  [/^💬/,'sub','💬'],[/^\s+↳/,'sub','↳']];
+const strip = t => t.replace(/^(🔧|🚀|✅|■|▶|✖|🛑|⏳|💬|\s+↳)\s*/,'');
+// The run log is written in the code's vocabulary; nobody should have to read "snapshot".
+const PLAIN = {snapshot:'看一下畫面', click:'點', type:'打字', type_body:'輸入內文',
+  upload_images:'上傳圖片', publish:'按下發布', done:'完成', give_up:'放棄'};
+const humanise = s => s.replace(/^(\w+)/, (m, w) => PLAIN[w] || w);
+function renderSteps(steps){
+  const out=[];
+  for(const raw of steps){
+    let c='sub', m='·';
+    for(const [re,cc,mm] of MARKS){ if(re.test(raw)){ c=cc; m=mm; break; } }
+    const body=humanise(strip(raw));
+    const prev=out[out.length-1];
+    // consecutive identical lines collapse to one row with ×N — high-frequency tools
+    // (snapshot) otherwise flood the console.
+    if(prev && prev.body===body && prev.c===c){ prev.n++; continue; }
+    out.push({c, m, body, n:1});
+  }
+  return out.map(s=>`<div class="step ${s.c}"><span class="mk">${s.m}</span>
+    <span class="tx">${esc(s.body)}</span>${s.n>1?`<span class="xn">×${s.n}</span>`:''}</div>`).join('');
+}
+
+/* ── live stream into the open dialog ────────────────── */
+function attachStream(runId){
+  if(es) es.close();
+  clearInterval(timer);
+  runStart = Date.now();
+  timer = setInterval(()=>{
+    const x = Math.floor((Date.now()-runStart)/1000);
+    $('run_elapsed').textContent =
+      `${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;
+  }, 500);
+  es = new EventSource(`/api/runs/${runId}/stream`);
+  es.onmessage = () => {};              // /api/state carries the steps; this just keeps it warm
+  es.addEventListener('end', () => { es.close(); es = null; clearInterval(timer); refresh(); });
+}
+
+/* ── state ───────────────────────────────────────── */
+async function refresh(){
+  try{ state=await api('/api/state'); }catch(e){ toast('讀不到狀態: '+e.message); return; }
+  renderChips(); renderTasks(); renderChannels(); renderSettings();
+  if(openTaskId !== null) paintRun();
+}
+function renderChips(){
+  const l=state.llm;
+  $('chip_llm').innerHTML = l.configured
+    ? `<span class="monostat t-success"><i></i>LLM ${esc(l.model)}</span>`
+    : `<span class="monostat t-warning"><i></i>LLM 未設定</span>`;
+  const w=state.line.window;
+  $('chip_line').innerHTML = w.error
+    ? `<span class="monostat t-destructive"><i></i>LINE 不可用</span>`
+    : `<span class="monostat t-success"><i></i>LINE ${w.width}×${w.height}</span>`;
+}
+
+const EVIDENCE={post_url:'多了一則發文前沒有的貼文', feed_text_new:'出現了發文前沒有的內容',
+  feed_text_match:'在頁面上找到貼文', composed_not_published:'預演完成',
+  note_text_on_screen:'在畫面上找到貼文'};
+const TONE={done:'success', success:'success', pending:'brand', running:'brand',
+  uncertain:'warning', missed:'warning', failed:'destructive', canceled:'neutral',
+  stopped:'neutral', queued:'brand'};
+const WORD={done:'已完成', success:'已完成', pending:'已排程', running:'執行中',
+  uncertain:'不確定', missed:'錯過', failed:'失敗', canceled:'已取消',
+  stopped:'已終止', queued:'排隊中'};
+
+/* What state a task is actually in: the stored status, refined by whatever the live run knows.
+   A task whose turn has not come yet says 排隊中 rather than looking stuck. */
+function taskState(task){
+  const live = state.live?.[String(task.run_id)];
+  if(task.status === 'running') return live?.waiting ? 'queued' : 'running';
+  return task.status;
+}
+const isLive = t => ['running','queued'].includes(taskState(t));
+
+/* Four questions, not one pile: what is happening now, what is going to happen, what happened,
+   and what did not work. Inside each, time order - soonest first for the future, newest first
+   for the past, which is the order you would ask about them in. */
+const GROUPS = [
+  {title:'進行中',   hint:'正在發，或排在同一個管道後面等',  tone:'t-primary',
+   states:['running','queued'],                                  newest:false},
+  {title:'已排程',   hint:'時間到就自己發，這頁不用開著',    tone:'t-brand',
+   states:['pending'],                                           newest:false},
+  {title:'已完成',   hint:'已經發出去了',                    tone:'t-success',
+   states:['done','success'],                                    newest:true, clear:['done']},
+  {title:'沒發成功', hint:'點開看停在哪一步，再建一個就好',  tone:'t-warning',
+   states:['uncertain','failed','stopped','missed','canceled'],  newest:true,
+   clear:['uncertain','failed','stopped','missed','canceled']},
+];
+
+/* "今天 14:30" beats "2026-10-24T14:30" for telling you whether you need to care yet. */
+function whenText(iso){
+  if(!iso) return '';
+  const d = new Date(String(iso).replace(' ','T'));
+  if(isNaN(d.getTime())) return String(iso).replace('T',' ').slice(0,16);
+  const hm = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const midnight = x => { const y=new Date(x); y.setHours(0,0,0,0); return y; };
+  const days = Math.round((midnight(d) - midnight(new Date()))/86400000);
+  if(days === 0) return `今天 ${hm}`;
+  if(days === 1) return `明天 ${hm}`;
+  if(days === -1) return `昨天 ${hm}`;
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return `${sameYear?'':d.getFullYear()+'/'}${d.getMonth()+1}/${d.getDate()} ${hm}`;
+}
+function untilText(iso){
+  const ms = new Date(String(iso).replace(' ','T')) - new Date();
+  if(isNaN(ms)) return '';
+  if(ms <= 0) return '時間到了，正在排進去';
+  const m = Math.round(ms/60000);
+  if(m < 60) return `還有 ${m} 分鐘`;
+  const h = Math.floor(m/60);
+  if(h < 24) return `還有 ${h} 小時 ${m%60} 分`;
+  return `還有 ${Math.floor(h/24)} 天`;
+}
+const destText = ch => {
+  if(ch === 'line_group_note') return state.settings?.line_group_name || '還沒設定群組';
+  const u = (state.settings?.fb_page_url || '').trim();
+  // facebook.com with nothing after it is the personal timeline, same as leaving it blank
+  return (!u || /^https?:\/\/(www\.)?facebook\.com\/?$/i.test(u)) ? '你的個人動態' : u;
+};
+
+/* The title is the body's opening, so printing both would read as a bug. The headline gets the
+   opening; the preview gets what comes after it. */
+function previewText(task){
+  const collapsed = String(task.post_body || '').replace(/\s+/g,' ').trim();
+  const title = String(task.post_title || '').trim();
+  return collapsed.startsWith(title) ? collapsed.slice(title.length).trim() : collapsed;
+}
+
+function renderTasks(){
+  const all = state.tasks || [];
+  if(!all.length){
+    $('tasks').innerHTML = `<div class="tasks">
+      <div class="card empty">
+        <div class="big">${svg('<path d="M4 12l16-8-5 16-3-6z"/>')}</div>
+        <h3>還沒有任務</h3>
+        <p class="hint">寫一則內容，勾好要發去哪，剩下的交給它。</p>
+        <button class="btn primary" onclick="openTask()">新增第一個任務</button>
+      </div></div>`;
+    return;
+  }
+  $('tasks').innerHTML = GROUPS.map(g => {
+    const mine = all.filter(x => g.states.includes(taskState(x)))
+      .sort((a,b) => g.newest ? String(b.run_at).localeCompare(String(a.run_at))
+                              : String(a.run_at).localeCompare(String(b.run_at)));
+    if(!mine.length) return '';
+    return `<section class="gsec">
+      <div class="ghead">
+        <h3><i class="${g.tone}"></i><span>${g.title}</span></h3>
+        <span class="n">${mine.length}</span>
+        <p>${g.hint}</p>
+        ${g.clear ? `<span class="spacer"></span>
+          <button class="btn sm ghost" onclick="clearTasks(${JSON.stringify(g.clear)
+            .replace(/"/g, '&quot;')}, '${g.title}')">清除</button>` : ''}
+      </div>
+      <div class="tasks">${mine.map(taskCard).join('')}</div>
+    </section>`;
+  }).join('');
+}
+
+function taskCard(task){
+  const imgs = task.post_images || [], st = taskState(task);
+  const steps = (state.live?.[String(task.run_id)]?.steps) || task.run_steps || [];
+  const preview = previewText(task);
+  const foot = st === 'pending' ? untilText(task.run_at)
+    : steps.length ? `${steps.length} 個步驟` : '還沒開始';
+  return `<div class="card lift fc" onclick="openRun(${task.id})" style="cursor:pointer">
+    <div class="head">
+      <span class="tile ${TONE_OF[task.channel]||''}">${svg(GLYPH[task.channel]||'')}</span>
+      <div style="min-width:0;flex:1">
+        <div class="title">${esc(task.post_title || '未命名任務')}</div>
+        <div class="when monostat t-muted"><i></i>${esc(whenText(task.run_at))} ·
+          ${esc(chanLabel(task.channel))}${task.dry_run?' · 預演':''}</div>
+      </div>
+      <span class="badge bg-${TONE[st]||'neutral'}">
+        ${isLive(task)?'<span style="width:6px;height:6px;border-radius:99px;background:currentColor;animation:pulse 1.1s ease-in-out infinite"></span>':''}
+        ${WORD[st]||esc(st)}</span>
+    </div>
+    ${(preview || imgs.length) ? `<div class="hair"></div>
+      <div class="bd">
+        ${preview?`<div class="content">${esc(preview)}</div>`:''}
+        ${imgs.length?`<div class="thumbs">${imgs.slice(0,4).map(n=>
+          `<img src="/media/${encodeURIComponent(n)}" alt="">`).join('')}${
+          imgs.length>4?`<span class="more">+${imgs.length-4}</span>`:''}</div>`:''}
+      </div>` : ''}
+    <div class="ft">
+      <span class="hint">${esc(foot)}</span>
+      <span class="spacer"></span>
+      ${task.status==='pending'
+        ? `<button class="btn sm ghost" onclick="event.stopPropagation();cancelTask(${task.id})">取消</button>`
+        : ''}
+      <button class="btn sm" onclick="event.stopPropagation();openRun(${task.id})">看內容</button>
+    </div>
+  </div>`;
+}
+
+/* Clearing only ever reaches finished tasks - the server refuses the rest - but it is still
+   deletion, so it asks first and says exactly how many. */
+async function clearTasks(statuses, label){
+  const n = state.tasks.filter(x => statuses.includes(taskState(x))).length;
+  if(!n) return toast('這裡沒有東西可以清');
+  if(!confirm(`清掉「${label}」這 ${n} 個任務？內容跟執行過程都會不見，圖片檔案會留著。`)) return;
+  try{
+    const r = await api('/api/tasks/clear','POST',{statuses});
+    toast(`清掉 ${r.cleared} 個`);
+    if(openTaskId !== null) closeRun();
+    await refresh();
+  }catch(e){ toast(e.message); }
+}
+
+async function cancelTask(id){
+  try{ await api(`/api/schedules/${id}/cancel`,'POST'); await refresh(); }
+  catch(e){ toast(e.message); }
+}
+
+/* ── one task, opened ─────────────────────────────────── */
+let openTaskId = null;
+function openRun(id){
+  openTaskId = id;
+  $('runscrim').hidden = false;
+  paintRun();
+  const task = state.tasks.find(x=>x.id===id);
+  if(task && isLive(task) && task.run_id) attachStream(task.run_id);
+}
+function closeRun(){
+  openTaskId = null; $('runscrim').hidden = true;
+  if(es){ es.close(); es=null; } clearInterval(timer);
+}
+$('runscrim').addEventListener('click', e=>{ if(e.target.id==='runscrim') closeRun(); });
+
+function paintRun(){
+  const task = state.tasks.find(x=>x.id===openTaskId);
+  if(!task) return;
+  const st = taskState(task);
+  const live = state.live?.[String(task.run_id)];
+  const steps = live?.steps || task.run_steps || [];
+
+  $('run_title').textContent = task.post_title || '任務';
+  const tone = {done:'t-success', success:'t-success', uncertain:'t-warning',
+    failed:'t-destructive', stopped:'t-muted', canceled:'t-muted', missed:'t-warning',
+    running:'t-primary', queued:'t-primary', pending:'t-muted'}[st] || 't-muted';
+  $('run_state').className = 'monostat ' + tone + (isLive(task)?' live':'');
+  $('run_state').innerHTML = `<i></i>${WORD[st]||st}`;
+  $('run_stop').hidden = !isLive(task);
+  $('run_stop').disabled = !!live?.stopping;
+  $('run_stop').textContent = live?.stopping ? '正在停…' : '終止';
+
+  const imgs = task.post_images || [], body = String(task.post_body || '');
+  $('run_about').innerHTML = `<div class="about">
+    <div class="meta">
+      <span class="kv"><b>發到</b><span>${esc(chanLabel(task.channel))} ·
+        ${esc(destText(task.channel))}</span></span>
+      <span class="kv"><b>時間</b><span>${esc(whenText(task.run_at))}${
+        st === 'pending' ? ' · ' + esc(untilText(task.run_at)) : ''}</span></span>
+      ${task.run_finished_at
+        ? `<span class="kv"><b>結束</b><span>${esc(whenText(task.run_finished_at))}</span></span>`
+        : ''}
+      ${task.dry_run?'<span class="badge bg-neutral">預演 · 不會真的發出去</span>':''}
+    </div>
+    <div>
+      <div class="flabel" style="margin-bottom:7px">要發的內文</div>
+      ${body ? `<div class="text">${esc(body)}</div>`
+             : '<div class="text none">沒有文字，只發圖片</div>'}
+    </div>
+    ${imgs.length ? `<div>
+      <div class="flabel" style="margin-bottom:7px">圖片 ${imgs.length} 張</div>
+      <div class="pics">${imgs.map(n=>`<a href="/media/${encodeURIComponent(n)}"
+        target="_blank" title="${esc(n)}"><img src="/media/${encodeURIComponent(n)}" alt=""></a>`
+        ).join('')}</div>
+      ${task.channel === 'line_group_note'
+        ? '<p class="hint" style="margin:9px 0 0">LINE 記事本目前只發得出文字，圖片會被跳過</p>'
+        : ''}
+    </div>` : ''}
+  </div>`;
+
+  $('run_nsteps').textContent = steps.length ? `${steps.length} 步` : '';
+
+  const ev = task.run_evidence;
+  $('run_evidence').innerHTML = ev
+    ? `<div style="padding:14px 22px;border-bottom:1px solid hsl(var(--border))">
+         <span class="badge bg-success">${esc(EVIDENCE[ev.kind]||ev.kind)}</span>
+         <span class="hint">${esc(String(ev.value).slice(0,120))}</span>
+         ${ev.shot?` · <a href="/shots/${encodeURIComponent(ev.shot)}" target="_blank">看截圖</a>`:''}
+       </div>`
+    : '';
+  $('run_detail').textContent = task.run_detail || '';
+
+  const box = $('run_steps');
+  const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.innerHTML = steps.length ? renderSteps(steps)
+    : '<div class="step sub"><span class="mk">·</span><span class="tx">還沒開始</span></div>';
+  if(atBottom) box.scrollTop = box.scrollHeight;
+}
+
+async function stopRun(){
+  const task = state.tasks.find(x=>x.id===openTaskId);
+  if(!task?.run_id) return;
+  try{ await api(`/api/runs/${task.run_id}/stop`,'POST'); toast('已送出終止，它會在下一步之間停下來'); }
+  catch(e){ toast(e.message); }
+  await refresh();
+}
+
+function renderChannels(){
+  $('channels').innerHTML = state.channels.map(c=>`
+    <div class="chrow">
+      <span class="tile ${TONE_OF[c.key]||''}" style="display:grid;place-items:center;width:40px;
+        height:40px;flex:none;border-radius:11px;background:hsl(var(--secondary));
+        box-shadow:inset 0 0 0 1px hsl(var(--border))">${svg(GLYPH[c.key]||'')}</span>
+      <div style="min-width:0;flex:1">
+        <div class="row" style="gap:8px">
+          <b style="font-size:14px">${esc(c.label)}</b>
+          <span class="badge bg-neutral">${c.runtime==='browser'?'瀏覽器':'桌面'}</span>
+          <span class="badge bg-${c.ready?'success':'warning'}">${c.ready?'可用':'還不能用'}</span>
+        </div>
+        <div class="hint" style="margin-top:5px">${esc(c.reason)}</div>
+        <div class="hint" style="opacity:.8">${esc(c.hint)}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ── new task ────────────────────────────────────── */
+function openTask(){
+  draft={channels:new Set(), images:[], now:true, dry:true};
+  $('t_body').value=''; $('t_at').value=''; $('t_files').value='';
+  setWhen(true); setMode(true); renderChoices(); renderTaskMedia();
+  $('scrim').hidden=false; setTimeout(()=>$('t_body').focus(), 60);
+}
+function closeTask(){
+  closeEmoji(); $('scrim').hidden=true; }
+$('scrim').addEventListener('click', e=>{ if(e.target.id==='scrim') closeTask(); });
+// Esc closes the innermost thing first: the emoji picker, and only then the composer
+// (which would discard what you typed).
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && !$('emojipop') && !$('scrim').hidden) closeTask(); });
+function renderChoices(){
+  $('t_channels').innerHTML = (state?.channels||[]).map(c=>`
+    <div class="choice" aria-pressed="${draft.channels.has(c.key)}" onclick="toggleChannel('${c.key}')">
+      <span class="ic ${TONE_OF[c.key]||''}">${svg(GLYPH[c.key]||'')}</span>
+      <div style="min-width:0"><div>${esc(c.label)}</div>
+        <div class="s">${c.ready?'可用':esc(c.reason)}</div></div>
+    </div>`).join('');
+}
+function toggleChannel(k){
+  draft.channels.has(k)?draft.channels.delete(k):draft.channels.add(k); renderChoices();
+}
+function renderTaskMedia(){
+  $('t_picked').innerHTML = draft.images.map(n=>`
+    <figure><img src="/media/${encodeURIComponent(n)}" alt="">
+      <button class="x" type="button" title="移除" onclick="dropImage('${esc(n)}')">×</button>
+      <figcaption>${esc(n)}</figcaption></figure>`).join('');
+}
+function dropImage(n){
+  const i=draft.images.indexOf(n); if(i>=0) draft.images.splice(i,1);
+  renderTaskMedia();
+}
+async function takeFiles(list){
+  if(!list || !list.length) return;
+  const body = new FormData();
+  for(const f of list) body.append('files', f);
+  try{
+    const r = await fetch('/api/media', {method:'POST', body});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+    for(const n of d.saved) if(!draft.images.includes(n)) draft.images.push(n);
+    if(d.skipped?.length) toast('略過：' + d.skipped.join('、'), 7000);
+    renderTaskMedia();
+  }catch(e){ toast(e.message, 8000); }
+  $('t_files').value = '';
+}
+// dragging files onto the box is the other way people expect to do this
+['dragenter','dragover'].forEach(ev => $('t_drop').addEventListener(ev, e => {
+  e.preventDefault(); $('t_drop').classList.add('on');
+}));
+['dragleave','drop'].forEach(ev => $('t_drop').addEventListener(ev, e => {
+  e.preventDefault(); $('t_drop').classList.remove('on');
+}));
+$('t_drop').addEventListener('drop', e => takeFiles(e.dataTransfer.files));
+
+/* ── composer helpers ────────────────────────────────── */
+// Grouped, with the numbered forms first: those are what gets used for 「1️⃣ 第一點」 style
+// posts, and all four families were checked through the WM_CHAR path into LINE - keycaps are a
+// three-codepoint sequence (digit + VS16 + combining keycap) and still arrive intact.
+const EMOJI_GROUPS = [
+  ['數字 · 大方塊', '0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟'],
+  ['數字 · 實心圈', '❶ ❷ ❸ ❹ ❺ ❻ ❼ ❽ ❾ ❿'],
+  ['數字 · 空心圈', '① ② ③ ④ ⑤ ⑥ ⑦ ⑧ ⑨ ⑩'],
+  ['標記', '✅ ❌ ⭕ ✔️ ☑️ ❗ ❓ ⚠️ 🔺 🔻 ▪️ ▫️ ◆ ◇ ★ ☆ ※ ● ○ ■ □ ➡️ ⬇️ 🔸 🔹 💠 ✳️'],
+  ['常用', '🎉 🔥 ✨ 💯 ⭐ ❤️ 👍 👏 🙌 💪 🫶 🙏 🎁 🛍️ 💰 🏷️ 📣 📢 🔔 ⏰ 📅 📍 ☎️ 📩 🚀 🆕 🆗'],
+  ['表情', '😀 😂 🥰 😍 🤩 😎 🤔 😅 😭 😱 🤗 😴 🙂 😉 😋 🤤 🥳 😇'],
+  ['其他', '☀️ 🌙 🌈 🌸 🍀 🍰 🍜 🍺 ☕ 🎂 🎵 🎬 📷 🏠 🚗 ✈️ 🐶 🐱 💡 📝'],
+];
+
+function insertAtCursor(text){
+  const el = $('t_body'), s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  el.selectionStart = el.selectionEnd = s + text.length;
+  el.focus();
+}
+const closeEmojiOutside = e => {
+  const pop = $('emojipop');
+  if(pop && !pop.contains(e.target)) closeEmoji();
+};
+const closeEmojiEsc = e => { if(e.key === 'Escape') closeEmoji(); };
+
+function closeEmoji(){
+  $('emojipop')?.remove();
+  document.removeEventListener('click', closeEmojiOutside);
+  document.removeEventListener('keydown', closeEmojiEsc);
+}
+
+function openEmoji(ev){
+  if($('emojipop')) return closeEmoji();        // the toolbar button toggles
+  const pop = document.createElement('div');
+  pop.id = 'emojipop';
+  pop.innerHTML = '<div class="ehint">點幾個都可以，點旁邊或按 Esc 關起來</div>' +
+    EMOJI_GROUPS.map(([label, chars]) =>
+      `<div class="egroup">${esc(label)}</div>` +
+      chars.split(' ').map(e=>`<button type="button" onclick="pickEmoji('${e}')">${e}</button>`).join('')
+    ).join('');
+  document.body.appendChild(pop);
+  // Under the text box, never over it: you need to see the words you are inserting into, and
+  // clicking the text box has to be a way out. Flip above the toolbar only if it would not fit.
+  const box = $('t_body').getBoundingClientRect();
+  const btn = ev.currentTarget.getBoundingClientRect();
+  const h = pop.getBoundingClientRect().height;
+  pop.style.left = Math.max(8, Math.min(box.left, innerWidth - 368)) + 'px';
+  pop.style.top = (box.bottom + 6 + h <= innerHeight - 8
+    ? box.bottom + 6 : Math.max(8, btn.top - 6 - h)) + 'px';
+  setTimeout(()=>{
+    document.addEventListener('click', closeEmojiOutside);
+    document.addEventListener('keydown', closeEmojiEsc);
+  }, 0);
+}
+
+// Stays open on purpose: one emoji is rarely what anyone means (🔥🔥🔥, 1️⃣2️⃣3️⃣).
+function pickEmoji(e){ insertAtCursor(e); }
+
+// Neither Facebook nor LINE posts carry formatting, so "bold" can only mean swapping letters for
+// the Unicode sans-serif bold characters. Those exist for Latin letters and digits and NOT for
+// Chinese, which is why the toolbar says so instead of quietly doing nothing to half the text.
+function toBold(s){
+  return [...s].map(ch=>{
+    const c = ch.codePointAt(0);
+    if(c>=65 && c<=90)  return String.fromCodePoint(0x1D5D4 + c - 65);
+    if(c>=97 && c<=122) return String.fromCodePoint(0x1D5EE + c - 97);
+    if(c>=48 && c<=57)  return String.fromCodePoint(0x1D7EC + c - 48);
+    return ch;
+  }).join('');
+}
+function makeBold(){
+  const el = $('t_body'), s = el.selectionStart, e = el.selectionEnd;
+  if(s === e) return toast('先選起來要變粗的字');
+  const picked = el.value.slice(s, e);
+  const bolded = toBold(picked);
+  if(bolded === picked) return toast('選到的字沒有粗體字符可用（中文沒有）', 6000);
+  el.value = el.value.slice(0, s) + bolded + el.value.slice(e);
+  el.selectionStart = s; el.selectionEnd = s + bolded.length;
+  el.focus();
+  if([...picked].some(ch=>ch.codePointAt(0) > 0x2FFF))
+    toast('中文的部分沒有粗體字符，維持原樣', 6000);
+}
+function setWhen(now){
+  draft.now=now; $('t_now').setAttribute('aria-pressed',String(now));
+  $('t_later').setAttribute('aria-pressed',String(!now)); $('t_at').hidden=now;
+}
+function setMode(dry){
+  draft.dry=dry; $('t_dry').setAttribute('aria-pressed',String(dry));
+  $('t_real').setAttribute('aria-pressed',String(!dry));
+  $('t_hint').innerHTML = dry ? '' : '<span class="t-destructive">真的發出去，收不回來</span>';
+}
+async function submitTask(){
+  if(!draft.channels.size) return toast('先選要發到哪裡');
+  if(!draft.dry && !confirm('這會真的發出去，而且收不回來。確定？')) return;
+  const payload={channels:[...draft.channels], body:trim($('t_body').value),
+    images:draft.images, run_at:draft.now?'':$('t_at').value, dry_run:draft.dry};
+  $('t_submit').disabled=true;
+  try{
+    const r=await api('/api/tasks','POST',payload);
+    closeTask();
+    await refresh();
+    if(r.tasks?.length) openRun(r.tasks[0]);
+  }catch(e){ toast(e.message, 9000); }
+  $('t_submit').disabled=false;
+}
+
+/* ── settings ────────────────────────────────────── */
+function renderSettings(){
+  const set=(id,v)=>{ if(document.activeElement!==$(id)) $(id).value=v||''; };
+  set('fb_page_url', state.settings.fb_page_url);
+  set('fb_audience', state.settings.fb_audience || '只限本人');
+  set('line_group_name', state.settings.line_group_name);
+  $('llm_api_key').placeholder = state.llm.api_key?`已設定 ${state.llm.api_key}（留空=不更動）`:'尚未設定';
+}
+async function saveLine(){
+  try{ await api('/api/settings','POST',{values:{line_group_name:trim($('line_group_name').value)}});
+    toast('已儲存'); await refresh(); }catch(e){ toast(e.message); }
+}
+async function saveFb(){
+  try{ await api('/api/settings','POST',{values:{fb_page_url:trim($('fb_page_url').value),
+      fb_audience:$('fb_audience').value}});
+    toast('已儲存'); await refresh(); }catch(e){ toast(e.message); }
+}
+async function saveLlm(){
+  const k=trim($('llm_api_key').value);
+  if(!k) return toast('貼上 API key 再按儲存');
+  const values={llm_api_key:k};
+  try{ await api('/api/settings','POST',{values}); $('llm_api_key').value='';
+    toast('已儲存'); await refresh(); }catch(e){ toast(e.message); }
+}
+async function testLlm(){
+  $('llm_status').innerHTML='<span class="hint">測試中…</span>';
+  try{ const r=await api('/api/llm/test','POST');
+    $('llm_status').innerHTML=`<span class="badge bg-success">連線成功 · ${esc(r.model)} 回「${esc(r.reply)}」</span>`;
+  }catch(e){ $('llm_status').innerHTML=`<span class="badge bg-destructive">${esc(e.message)}</span>`; }
+}
+// The window stays open until the user closes it - that is the whole point of the button.
+async function fbBrowser(){
+  $('fblogin').disabled=true;
+  $('fblogin').textContent='瀏覽器開著…';
+  toast('開好了。登入、看貼文、改設定都可以，用完把那個視窗關掉就行', 20000);
+  try{ const r=await api('/api/facebook/browser','POST');
+    toast(r.logged_in ? '視窗關了，登入狀態記住了' : '視窗關了（這次沒看到登入）', 7000);
+  }catch(e){ toast(e.message, 9000); }
+  $('fblogin').disabled=false;
+  $('fblogin').textContent='開啟專用瀏覽器';
+  await refresh();
+}
+
+renderNav(); refresh();
+setInterval(() => refresh(), 4000);
+setInterval(() => { if (openTaskId !== null) refresh(); }, 1200);
+</script>
+</body>
+</html>

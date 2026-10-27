@@ -1,0 +1,22 @@
+# Unpinned on purpose: this is a demo you install once, and inventing version numbers from memory
+# is how a requirements file ends up pointing at releases that never existed.
+#
+# After installing, fetch the browser binding once:   python -m playwright install chromium
+# (the Facebook channel uses your installed Chrome via channel="chrome", but Playwright still
+#  needs its driver.)
+
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+
+# Facebook channel
+playwright
+
+# LINE channel - window capture and template matching
+pillow
+opencv-python
+numpy
+
+# tests
+pytest
